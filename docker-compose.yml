@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: stockbot-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: stock_signal_bot
+      MYSQL_USER: stockbot
+      MYSQL_PASSWORD: stockbot_secret
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-database.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    container_name: stockbot-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: stockbot
+      DB_PASSWORD: stockbot_secret
+      DB_DATABASE: stock_signal_bot
+      NODE_ENV: production
+      SIGNALS_OUTPUT_DIR: ./data/signals
+    env_file:
+      - .env
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./data/signals:/app/data/signals
+
+volumes:
+  mysql_data:
