@@ -1,11 +1,11 @@
 # Stock Signal Bot — Full Project Specification
 
 ## Overview
-Build a complete NestJS + MySQL + Telegraf Telegram bot for Indian stock market (NSE/BSE) signals with a virtual portfolio tracker and React dashboard.
+Build a complete NestJS + PostgreSQL + Telegraf Telegram bot for Indian stock market (NSE/BSE) signals with a virtual portfolio tracker and React dashboard.
 
 ## Architecture
 - **Analysis Engine**: Shell script (`scripts/run-analysis.sh`) that invokes Claude Code in `-p` (non-interactive) mode with a multi-agent prompt. Runs via cron at 8:30 AM and 12:30 PM IST on weekdays.
-- **NestJS Bot**: Always-running service that watches for signal JSON files, imports them into MySQL, broadcasts via Telegram, manages virtual portfolios, and serves a REST API for the dashboard.
+- **NestJS Bot**: Always-running service that watches for signal JSON files, imports them into PostgreSQL, broadcasts via Telegram, manages virtual portfolios, and serves a REST API for the dashboard.
 - **React Dashboard**: Separate app on port 3001 for equity curves, trade history, and signal analysis.
 
 ## The Multi-Agent System (runs inside Claude Code via -p flag)
@@ -26,7 +26,7 @@ If ANY answer is NO → revise and retry. Each iteration reduces confidence by 1
 
 Output: JSON file written to `data/signals/signals_YYYY-MM-DD_HHMM.json`
 
-## NestJS Modules (use layered architecture with separate entities/services/controllers)
+## NestJS Modules (use layered architecture with separate entities/services/controllers, PostgreSQL via TypeORM)
 
 ### MarketDataModule
 - Entity: `stock_prices` (symbol, name, date, OHLCV, volume)
@@ -69,7 +69,7 @@ Output: JSON file written to `data/signals/signals_YYYY-MM-DD_HHMM.json`
 ## Config Files
 - .env.example with: TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_USER_ID, DB_*, DEFAULT_VIRTUAL_CAPITAL=1000000, SIGNALS_OUTPUT_DIR=./data/signals, MAX_VALIDATION_ITERATIONS=6
 - Standard NestJS: tsconfig.json (with @common/@modules/@config path aliases), nest-cli.json, tsconfig.build.json
-- Docker: Dockerfile + docker-compose.yml (mysql + bot services)
+- Docker: Dockerfile + docker-compose.yml (postgres + bot services)
 - init-database.sql
 
 ## Key Technical Decisions
@@ -80,4 +80,4 @@ Output: JSON file written to `data/signals/signals_YYYY-MM-DD_HHMM.json`
 - ConfigModule with registerAs for typed config access
 - All cron jobs use Asia/Kolkata timezone
 - Enable CORS for localhost:3001 (React dashboard)
-- TypeORM synchronize in dev, migrations in production
+- PostgreSQL (Supabase-compatible) via TypeORM, synchronize in dev, migrations in production

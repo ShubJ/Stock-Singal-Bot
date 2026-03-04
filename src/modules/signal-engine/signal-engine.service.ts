@@ -40,11 +40,11 @@ export class SignalEngineService {
           stopLoss: raw.stopLoss,
           riskRewardRatio: raw.riskRewardRatio,
           positionSizePct: raw.positionSizePct,
-          technicals: () => `'${JSON.stringify(raw.technicals).replace(/'/g, "''")}'`,
-          sentiment: () => `'${JSON.stringify(raw.sentiment).replace(/'/g, "''")}'`,
+          technicals: () => `'${JSON.stringify(raw.technicals ?? null)}'::jsonb`,
+          sentiment: () => `'${JSON.stringify(raw.sentiment ?? null)}'::jsonb`,
           reasoning: raw.reasoning,
           validationIterations: raw.validationIterations,
-          validationLog: () => `'${JSON.stringify(raw.validationLog).replace(/'/g, "''")}'`,
+          validationLog: () => `'${JSON.stringify(raw.validationLog ?? null)}'::jsonb`,
           marketSummary,
         })
         .execute();

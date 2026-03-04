@@ -23,11 +23,11 @@ export class Signal {
   name: string;
 
   @Index()
-  @Column({ type: 'enum', enum: SignalType, name: 'signal_type' })
+  @Column({ type: 'varchar', length: 20, enum: SignalType, name: 'signal_type' })
   signalType: SignalType;
 
   @Index()
-  @Column({ type: 'enum', enum: TradeType, name: 'trade_type' })
+  @Column({ type: 'varchar', length: 20, enum: TradeType, name: 'trade_type' })
   tradeType: TradeType;
 
   @Column({ type: 'decimal', precision: 5, scale: 2 })
@@ -48,10 +48,10 @@ export class Signal {
   @Column({ type: 'decimal', precision: 5, scale: 2, name: 'position_size_pct', default: 5.0 })
   positionSizePct: number;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   technicals: Record<string, unknown> | null;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   sentiment: Record<string, unknown> | null;
 
   @Column({ type: 'text', nullable: true })
@@ -60,7 +60,7 @@ export class Signal {
   @Column({ type: 'int', name: 'validation_iterations', default: 1 })
   validationIterations: number;
 
-  @Column({ type: 'json', nullable: true, name: 'validation_log' })
+  @Column({ type: 'jsonb', nullable: true, name: 'validation_log' })
   validationLog: Record<string, unknown>[] | null;
 
   @Column({ type: 'text', nullable: true, name: 'market_summary' })

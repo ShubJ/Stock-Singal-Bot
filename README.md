@@ -10,7 +10,7 @@ AI-powered Indian stock market (NSE/BSE) signal generator with a virtual portfol
   - [1. Clone and Install](#1-clone-and-install)
   - [2. Create a Telegram Bot](#2-create-a-telegram-bot)
   - [3. Install and Configure Claude Code CLI](#3-install-and-configure-claude-code-cli)
-  - [4. Set Up MySQL Database](#4-set-up-mysql-database)
+  - [4. Set Up PostgreSQL Database](#4-set-up-postgresql-database)
   - [5. Configure Environment Variables](#5-configure-environment-variables)
   - [6. Initialize the Database Schema](#6-initialize-the-database-schema)
   - [7. Run the Application](#7-run-the-application)
@@ -66,7 +66,7 @@ You need the following installed on your system before starting:
 |---|---|---|---|
 | **Node.js** | v18.0.0+ | `node --version` | [nodejs.org](https://nodejs.org/) or `brew install node` |
 | **npm** | v9.0.0+ | `npm --version` | Comes with Node.js |
-| **MySQL** | 8.0+ | `mysql --version` | See [Step 4](#4-set-up-mysql-database) |
+| **PostgreSQL** | 14+ | `psql --version` | See [Step 4](#4-set-up-postgresql-database) |
 | **Claude Code CLI** | Latest | `claude --version` | See [Step 3](#3-install-and-configure-claude-code-cli) |
 | **Docker** (optional) | 20.0+ | `docker --version` | [docker.com](https://docs.docker.com/get-docker/) |
 | **Docker Compose** (optional) | v2.0+ | `docker compose version` | Comes with Docker Desktop |
@@ -92,7 +92,7 @@ npm install
 ```
 
 This installs all required packages including:
-- NestJS framework + TypeORM + MySQL driver
+- NestJS framework + TypeORM + PostgreSQL driver
 - Telegraf (Telegram bot library)
 - yahoo-finance2 (market data reference)
 - technicalindicators (local TA computations)
@@ -160,77 +160,84 @@ which claude
 # Typical output: /usr/local/bin/claude or /opt/homebrew/bin/claude
 ```
 
-### 4. Set Up MySQL Database
+### 4. Set Up PostgreSQL Database
 
-You have two options: install MySQL locally or use Docker.
+You have two options: install PostgreSQL locally, use Docker, or use **Supabase** (hosted PostgreSQL).
 
-#### Option A: MySQL via Docker (Recommended)
-
-This is the easiest approach. It only starts the MySQL container, not the full stack:
+#### Option A: PostgreSQL via Docker (Recommended for local dev)
 
 ```bash
-# Start only the MySQL service from docker-compose
-docker compose up mysql -d
+# Start only the PostgreSQL service from docker-compose
+docker compose up postgres -d
 
 # Verify it's running
 docker compose ps
 
 # Check the logs
-docker compose logs mysql
+docker compose logs postgres
 ```
 
-MySQL will be available at `localhost:3306` with:
+PostgreSQL will be available at `localhost:5432` with:
 - Database: `stock_signal_bot`
 - Username: `stockbot`
 - Password: `stockbot_secret`
 
 The `init-database.sql` file runs automatically on first start and creates all tables.
 
-#### Option B: Install MySQL Locally
+#### Option B: Use Supabase (Recommended for production)
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Go to **Settings > Database** to find your connection details
+3. Update `.env` with your Supabase credentials:
+
+```env
+DB_HOST=db.<your-project-ref>.supabase.co
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=<your-supabase-db-password>
+DB_DATABASE=postgres
+```
+
+4. Run the init script via Supabase SQL Editor or `psql`:
+
+```bash
+psql "postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres" -f init-database.sql
+```
+
+#### Option C: Install PostgreSQL Locally
 
 **macOS (Homebrew):**
 
 ```bash
-# Install MySQL 8
-brew install mysql
-
-# Start the service
-brew services start mysql
-
-# Secure the installation (set root password)
-mysql_secure_installation
-
-# Log in as root
-mysql -u root -p
+brew install postgresql@16
+brew services start postgresql@16
 ```
 
 **Ubuntu/Debian:**
 
 ```bash
 sudo apt update
-sudo apt install mysql-server
-sudo systemctl start mysql
-sudo mysql_secure_installation
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
 ```
 
 **Create the database and user:**
 
 ```sql
--- Log into MySQL as root
-mysql -u root -p
-
--- Create database
-CREATE DATABASE stock_signal_bot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- Log into PostgreSQL as superuser
+sudo -u postgres psql
 
 -- Create user
-CREATE USER 'stockbot'@'localhost' IDENTIFIED BY 'stockbot_secret';
+CREATE USER stockbot WITH PASSWORD 'stockbot_secret';
+
+-- Create database
+CREATE DATABASE stock_signal_bot OWNER stockbot;
 
 -- Grant permissions
-GRANT ALL PRIVILEGES ON stock_signal_bot.* TO 'stockbot'@'localhost';
-FLUSH PRIVILEGES;
+GRANT ALL PRIVILEGES ON DATABASE stock_signal_bot TO stockbot;
 
 -- Exit
-EXIT;
+\q
 ```
 
 ### 5. Configure Environment Variables
@@ -249,9 +256,9 @@ TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIjKlMnOpQrStUvWxYz
 # Telegram — your user ID from @userinfobot
 TELEGRAM_ADMIN_USER_ID=123456789
 
-# Database — update if you changed the defaults
+# Database — update if you changed the defaults (or use Supabase credentials)
 DB_HOST=localhost
-DB_PORT=3306
+DB_PORT=5432
 DB_USERNAME=stockbot
 DB_PASSWORD=stockbot_secret
 DB_DATABASE=stock_signal_bot
@@ -269,32 +276,31 @@ CLAUDE_PATH=/usr/local/bin/claude
 
 ### 6. Initialize the Database Schema
 
-If you used **Docker** for MySQL (Option A in Step 4), the schema is already created automatically. Skip this step.
+If you used **Docker** (Option A) or **Supabase** (Option B with SQL Editor), the schema is already created. Skip this step.
 
-If you installed MySQL **locally** (Option B), run the init script:
+If you installed PostgreSQL **locally** (Option C), run the init script:
 
 ```bash
-mysql -u stockbot -p stock_signal_bot < init-database.sql
+psql -U stockbot -d stock_signal_bot -f init-database.sql
 ```
 
 Verify the tables were created:
 
 ```bash
-mysql -u stockbot -p stock_signal_bot -e "SHOW TABLES;"
+psql -U stockbot -d stock_signal_bot -c "\dt"
 ```
 
 Expected output:
 
 ```
-+------------------------------+
-| Tables_in_stock_signal_bot   |
-+------------------------------+
-| portfolio_snapshots          |
-| portfolios                   |
-| signals                      |
-| stock_prices                 |
-| trades                       |
-+------------------------------+
+             List of relations
+ Schema |        Name          | Type  | Owner
+--------+----------------------+-------+---------
+ public | portfolio_snapshots  | table | stockbot
+ public | portfolios           | table | stockbot
+ public | signals              | table | stockbot
+ public | stock_prices         | table | stockbot
+ public | trades               | table | stockbot
 ```
 
 ### 7. Run the Application
@@ -377,7 +383,7 @@ This uses Claude Code to fetch the last 5 trading days of OHLCV data for 20 NIFT
 
 ## Running with Docker
 
-To run the entire stack (MySQL + NestJS bot) with Docker:
+To run the entire stack (PostgreSQL + NestJS bot) with Docker:
 
 ```bash
 # Create your .env file first (Step 5 above)
@@ -398,9 +404,9 @@ docker compose down -v
 ```
 
 The Docker setup:
-- MySQL runs in `stockbot-mysql` container with persistent volume
+- PostgreSQL runs in `stockbot-postgres` container with persistent volume
 - The bot runs in `stockbot-app` container
-- `init-database.sql` creates all tables on first MySQL start
+- `init-database.sql` creates all tables on first PostgreSQL start
 - `data/signals/` is mounted as a volume so the analysis script (running on host) can write signal files that the containerized bot picks up
 
 **Important**: The analysis script (`run-analysis.sh`) runs on the **host machine** via cron (not inside Docker), because it needs access to Claude Code CLI. The signal JSON files are shared via the volume mount.
@@ -585,11 +591,11 @@ All configuration is via environment variables. Copy `.env.example` to `.env` an
 |---|---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Yes | — | Token from @BotFather |
 | `TELEGRAM_ADMIN_USER_ID` | Yes | — | Your Telegram user ID for admin broadcasts |
-| `DB_HOST` | No | `localhost` | MySQL hostname |
-| `DB_PORT` | No | `3306` | MySQL port |
-| `DB_USERNAME` | No | `stockbot` | MySQL username |
-| `DB_PASSWORD` | No | `stockbot_secret` | MySQL password |
-| `DB_DATABASE` | No | `stock_signal_bot` | MySQL database name |
+| `DB_HOST` | No | `localhost` | PostgreSQL hostname (or Supabase host) |
+| `DB_PORT` | No | `5432` | PostgreSQL port |
+| `DB_USERNAME` | No | `stockbot` | PostgreSQL username |
+| `DB_PASSWORD` | No | `stockbot_secret` | PostgreSQL password |
+| `DB_DATABASE` | No | `stock_signal_bot` | PostgreSQL database name |
 | `NODE_ENV` | No | `development` | `development` or `production` |
 | `PORT` | No | `3000` | HTTP server port |
 | `DEFAULT_VIRTUAL_CAPITAL` | No | `1000000` | Starting virtual capital in INR (10 Lakh) |
@@ -605,19 +611,19 @@ All configuration is via environment variables. Copy `.env.example` to `.env` an
 
 The bot runs without Telegram if no token is set. This is by design — the REST API and signal processing still work. Set `TELEGRAM_BOT_TOKEN` in `.env` to enable the bot.
 
-### "ER_ACCESS_DENIED_ERROR" on startup
+### "FATAL: password authentication failed" on startup
 
-MySQL credentials in `.env` don't match. Verify:
+PostgreSQL credentials in `.env` don't match. Verify:
 
 ```bash
-# Test MySQL connection directly
-mysql -u stockbot -pstockbot_secret stock_signal_bot -e "SELECT 1;"
+# Test PostgreSQL connection directly
+psql -U stockbot -d stock_signal_bot -c "SELECT 1;"
 ```
 
-If using Docker MySQL:
+If using Docker PostgreSQL:
 
 ```bash
-docker compose logs mysql
+docker compose logs postgres
 ```
 
 ### "Cannot find module" or path alias errors
@@ -655,24 +661,24 @@ kill -9 <PID>
 PORT=3001
 ```
 
-### Docker MySQL won't start (port conflict)
+### Docker PostgreSQL won't start (port conflict)
 
 ```bash
-# Check if local MySQL is running on 3306
-lsof -i :3306
+# Check if local PostgreSQL is running on 5432
+lsof -i :5432
 
-# Either stop local MySQL
-brew services stop mysql
+# Either stop local PostgreSQL
+brew services stop postgresql@16
 
 # Or change the Docker port in docker-compose.yml
 ports:
-  - '3307:3306'
-# And update DB_PORT=3307 in .env
+  - '5433:5432'
+# And update DB_PORT=5433 in .env
 ```
 
 ### TypeORM synchronize warnings in production
 
-This is expected. In development, `synchronize: true` auto-creates tables. For production, use migrations:
+This is expected. In development, `synchronize: true` auto-creates tables. For production (or Supabase), use migrations:
 
 ```bash
 # Generate a migration from entity changes
@@ -687,11 +693,12 @@ npm run migration:run
 ```bash
 # Reset database (Docker)
 docker compose down -v
-docker compose up mysql -d
+docker compose up postgres -d
 
 # Reset database (local)
-mysql -u root -p -e "DROP DATABASE stock_signal_bot; CREATE DATABASE stock_signal_bot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -u stockbot -p stock_signal_bot < init-database.sql
+psql -U postgres -c "DROP DATABASE stock_signal_bot;"
+psql -U postgres -c "CREATE DATABASE stock_signal_bot OWNER stockbot;"
+psql -U stockbot -d stock_signal_bot -f init-database.sql
 
 # Clear signal files
 rm -f data/signals/*.json data/signals/.new_signals

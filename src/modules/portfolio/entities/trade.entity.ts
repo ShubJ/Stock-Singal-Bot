@@ -31,10 +31,10 @@ export class Trade {
   @Column({ type: 'varchar', length: 20 })
   symbol: string;
 
-  @Column({ type: 'enum', enum: TradeAction })
+  @Column({ type: 'varchar', length: 20, enum: TradeAction })
   action: TradeAction;
 
-  @Column({ type: 'enum', enum: TradeType, name: 'trade_type' })
+  @Column({ type: 'varchar', length: 20, enum: TradeType, name: 'trade_type' })
   tradeType: TradeType;
 
   @Column({ type: 'int' })
@@ -46,7 +46,7 @@ export class Trade {
   @Column({ type: 'decimal', precision: 14, scale: 2, name: 'total_value' })
   totalValue: number;
 
-  @Column({ type: 'enum', enum: TradeSource, default: TradeSource.MANUAL })
+  @Column({ type: 'varchar', length: 20, enum: TradeSource, default: TradeSource.MANUAL })
   source: TradeSource;
 
   @Column({ name: 'signal_id', nullable: true })

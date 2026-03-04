@@ -38,7 +38,7 @@ export class PortfolioSnapshot {
   @Column({ type: 'decimal', precision: 14, scale: 2, name: 'pnl_absolute', default: 0 })
   pnlAbsolute: number;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   holdings: Record<string, unknown>[] | null;
 
   @Column({ type: 'int', name: 'total_trades', default: 0 })
